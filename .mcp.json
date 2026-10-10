@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "campus-customs": {
+      "type": "stdio",
+      "command": "C:/Users/phili/OneDrive/Desktop/AI Yale/Homework 5/hw5/.venv/Scripts/python.exe",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "PYTHONPATH": "C:/Users/phili/OneDrive/Desktop/AI Yale/Homework 5/hw5",
+        "PYTHONUNBUFFERED": "1",
+        "CAMPUS_CUSTOMS_DB": "C:/Users/phili/OneDrive/Desktop/AI Yale/Homework 5/hw5/data/campus_customs_new.db"
+      }
+    }
+  }
+}

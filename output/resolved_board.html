@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campus Customs — Resolved Board (Problem 9)</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel-2: #1c2330; --line: #2a3342;
+    --text: #e6edf3; --muted: #9aa7b8; --accent: #58a6ff;
+    --bad: #ff7b72; --warn: #e3b341; --ok: #3fb950; --mine: #f2c14e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.7 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: var(--text); background: var(--bg); }
+  header { background: linear-gradient(135deg, #0b1f3a 0%, #0d1117 70%); border-bottom: 1px solid var(--line); padding: 30px 40px 26px; }
+  header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: .3px; }
+  header .sub { color: var(--muted); margin: 4px 0 20px; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 16px; }
+  .stat span { display: block; font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
+  .stat b { font-size: 18px; white-space: nowrap; }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; }
+  nav.jump a { color: var(--muted); text-decoration: none; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 14px; font-size: 14px; font-weight: 600; }
+  nav.jump a:hover { color: var(--accent); border-color: var(--accent); }
+  main { max-width: 1180px; margin: 0 auto; padding: 32px 24px 60px; }
+  .lead { color: var(--muted); margin: 0 0 24px; max-width: 920px; }
+  .ticket { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; margin-bottom: 34px; }
+  .ticket-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 20px 24px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .ticket-head h2 { margin: 0; font-size: 22px; }
+  .ticket-head .who { color: var(--muted); font-size: 14.5px; }
+  .status { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; white-space: nowrap; }
+  .s-resolved { background: rgba(63,185,80,.16); color: #7ee2a8; border: 1px solid rgba(63,185,80,.4); }
+  .s-vendor { background: rgba(88,166,255,.14); color: #a5c8ff; border: 1px solid rgba(88,166,255,.4); }
+  .s-customer { background: rgba(196,177,255,.12); color: #c4b1ff; border: 1px solid rgba(196,177,255,.4); }
+
+  /* walkthrough */
+  .flow { padding: 20px 24px 6px; }
+  .flow h3, .box h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .steps { list-style: none; margin: 0; padding: 0; position: relative; }
+  .steps::before { content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px; width: 2px; background: var(--line); }
+  .step { position: relative; display: grid; grid-template-columns: 32px 1fr; gap: 14px; margin-bottom: 22px; }
+  .dot { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; z-index: 1; border: 2px solid var(--line); background: var(--panel-2); color: var(--muted); }
+  .k-team .dot { border-color: #3b6fb5; color: #9cc8ff; background: #13243b; }
+  .k-you .dot { border-color: #b8902a; color: var(--mine); background: #2b2310; }
+  .k-cash .dot { border-color: #a5463f; color: var(--bad); background: #2e1716; }
+  .k-done .dot { border-color: #2f8a45; color: #7ee2a8; background: #12291a; }
+  .step-card { background: #111720; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 14px; }
+  .k-you .step-card { border-color: rgba(242,193,78,.45); background: linear-gradient(180deg, rgba(242,193,78,.06), #111720 60%); }
+  .step-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .step-title { font-weight: 700; }
+  .tag { font-size: 11px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; padding: 1px 9px; border-radius: 999px; }
+  .t-team { background: #13243b; color: #9cc8ff; } .t-you { background: #3a2f12; color: var(--mine); }
+  .t-cash { background: #3a1a18; color: #ffb3ad; } .t-done { background: #12291a; color: #7ee2a8; }
+  .step p { margin: 6px 0 10px; font-size: 14.5px; color: #cdd6e0; }
+  .step img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.4); cursor: zoom-in; transition: transform .15s ease; }
+  .step img:hover { transform: translateY(-2px); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pair figure { margin: 0; } .pair figcaption { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+  .quote { border-left: 3px solid var(--mine); padding: 4px 12px; margin: 0 0 10px; color: #e8dcb8; font-size: 14px; background: rgba(242,193,78,.05); border-radius: 0 8px 8px 0; }
+  .quote small { display: block; color: var(--muted); }
+
+  .body { display: grid; grid-template-columns: 1.15fr 1fr; gap: 18px; padding: 6px 24px 24px; }
+  .box { background: #111720; border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; }
+  .box p { margin: 0 0 8px; } .box p:last-child { margin: 0; }
+  .facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .fact { background: var(--panel-2); border: 1px solid var(--line); border-radius: 9px; padding: 5px 12px; font-size: 13.5px; }
+  .fact span { display: block; font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .agents { list-style: none; margin: 0; padding: 0; }
+  .agents li { padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 14.5px; }
+  .agents li:last-child { border-bottom: 0; }
+  .ag { display: inline-block; padding: 0 9px; border-radius: 6px; font-size: 12.5px; font-weight: 700; margin-right: 6px; }
+  .ag-boss { background: #1f3b63; color: #9cc8ff; } .ag-inv { background: #173d2a; color: #7ee2a8; }
+  .ag-acc { background: #33265a; color: #c4b1ff; } .ag-fac { background: #0f3a42; color: #7fd8e6; }
+  .ag-cs { background: #4a1d38; color: #ff9fd0; } .ag-human { background: #3a2f12; color: #f2c14e; }
+  .ag-off { background: var(--panel-2); color: var(--muted); font-weight: 600; }
+  .approval { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(242,193,78,.07); border: 1px dashed rgba(242,193,78,.4); margin-top: 8px; font-size: 14px; }
+  .approval .amt { color: var(--bad); font-weight: 800; white-space: nowrap; }
+  .approval small { color: var(--muted); display: block; }
+  .none { color: var(--muted); font-size: 14px; }
+  .runs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip { font: 12px Consolas, "Cascadia Code", monospace; background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; color: var(--muted); }
+  code { font: 13px Consolas, "Cascadia Code", monospace; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; color: #d2e3ff; }
+  .bad { color: var(--bad); } .ok { color: var(--ok); }
+  .extra { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .extra figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .extra img { width: 100%; border-radius: 10px; border: 1px solid var(--line); cursor: zoom-in; display: block; }
+  .extra figcaption { color: var(--muted); font-size: 13.5px; margin-top: 8px; }
+  h2.section { font-size: 22px; margin: 10px 0 14px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin: 0 0 22px; font-size: 13.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .lightbox { position: fixed; inset: 0; background: rgba(5,8,12,.92); display: none; align-items: center; justify-content: center; padding: 30px; z-index: 10; cursor: zoom-out; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 20px 80px rgba(0,0,0,.6); }
+  footer { text-align: center; color: var(--muted); font-size: 13px; padding: 20px; border-top: 1px solid var(--line); }
+  @media (max-width: 900px) { .body, .extra, .pair { grid-template-columns: 1fr; } header { padding: 22px 18px; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Campus Customs — Resolved Board</h1>
+  <div class="sub">Problem 9 · Resolve the tickets · the React board, step by step, one run per ticket, with every decision made by a human in the interface while the run waited</div>
+  <div class="stats">
+    <div class="stat"><span>Desk date</span><b>2026-08-31</b></div>
+    <div class="stat"><span>Cash</span><b>$3,400.00 → <span style="color:var(--accent)">$152.00</span></b></div>
+    <div class="stat"><span>Human approvals</span><b>3 · all by Philipp ("Phil")</b></div>
+    <div class="stat"><span>Team runs</span><b>3 · 190,452 tokens</b></div>
+    <div class="stat"><span>Model</span><b>gpt-6-luna via Portkey</b></div>
+  </div>
+  <nav class="jump"><a href="#t101">101 Bulldog tee</a><a href="#t102">102 Rent due</a><a href="#t103">103 Bulk hoodies</a><a href="#more">Approvals and Finance</a></nav>
+</header>
+
+<main>
+  <p class="lead">The database was reset with the board's <b>Reset</b> button, and each ticket was run from the desk in the order 101 → 102 → 103, <b>one run per ticket</b>. Whenever the team reached a payment or a purchase order, the agent's call waited on the board and the desk showed <b>"1 decision needs you"</b>. Philipp opened the decision in the Approvals inbox of his own browser window, checked it, ticked "I checked the amount, the reason and the cash impact" and clicked <b>Approve and pay</b>. The approver name in his window was <b>Phil</b>, which is what the database records. Only then did cash move, and the same run continued with the next step. The screenshots below come from a second window following the same board. Click any image to enlarge it. <code>output/resolved_tickets.json</code> has the same facts in machine-readable form.</p>
+  <div class="legend">
+    <span><span class="tag t-team">Team</span> the agents work</span>
+    <span><span class="tag t-you">You</span> a human decides</span>
+    <span><span class="tag t-cash">Cash</span> money moves</span>
+    <span><span class="tag t-done">Final</span> where the ticket ends</span>
+  </div>
+
+  <!-- ============================================================ 101 -->
+  <section class="ticket" id="t101">
+    <div class="ticket-head">
+      <div><h2>#101 · Bulldog tee</h2><div class="who">Tauhid Zaman · 1 × CC-TEE-WHITE, size S · customer order</div></div>
+      <span class="status s-vendor">waiting on vendor</span>
+    </div>
+    <div class="flow">
+      <h3>How it went on the board · one run, two decisions</h3>
+      <ol class="steps">
+        <li class="step k-team"><div class="dot">1</div><div class="step-card">
+          <div class="step-top"><span class="step-title">The run waits at invoice 501</span><span class="tag t-team">Team · run a58b38b75ec7</span></div>
+          <p>Inventory finds size S at 0 and Bulldog Print Co blocked by overdue invoice 501. Accounting confirms $3,400.00 − $840.00 − $2,400.00 = $160.00 left after both bills. The Boss authorizes exactly $840.00, and Accounting's <code>pay_invoice</code> call goes on the board and waits. The desk shows the amber banner <b>"1 decision needs you"</b>, the <b>You</b> node lights up, and the inspector shows <b>Team is working</b> and <b>Waiting for your decision</b> at the same time. Cash is still $3,400.00.</p>
+          <img src="board_screenshots/flow/101_1_waiting_for_decision.png" alt="Desk, ticket 101, run working and one decision waiting">
+        </div></li>
+        <li class="step k-you"><div class="dot">2</div><div class="step-card">
+          <div class="step-top"><span class="step-title">Philipp reviews and approves #1</span><span class="tag t-you">You decide</span></div>
+          <p>The inbox shows why the payment is on the desk: the Boss's authorization, Accounting's reason and the cash impact ($3,400.00 → $2,560.00, $160.00 after all known bills). The review dialog needs a name and the "I checked" box before <b>Approve and pay $840.00</b> is enabled. Philipp approved it 3 min 53 s after the request, while the run waited.</p>
+          <div class="pair">
+            <figure><img src="board_screenshots/flow/101_2_approval_inbox.png" alt="Approvals inbox with invoice 501 pending"><figcaption>Approvals inbox · #1 pending while the run waits</figcaption></figure>
+            <figure><img src="board_screenshots/flow/101_3_approve_dialog.png" alt="Approve dialog for invoice 501"><figcaption>Review dialog in the second window · the approval that counted was Philipp's click in his own window (name "Phil", no note)</figcaption></figure>
+          </div>
+        </div></li>
+        <li class="step k-cash"><div class="dot">3</div><div class="step-card">
+          <div class="step-top"><span class="step-title">$840.00 leaves checking, the run continues</span><span class="tag t-cash">Cash −$840.00</span></div>
+          <p>The board pays invoice 501 once, with <code>approved_by = Phil</code>: $3,400.00 → $2,560.00, and Bulldog Print Co has no open invoices left and can ship again. The waiting <code>pay_invoice</code> call returns <code>approved_and_executed</code> to Accounting, and the Boss goes on in the same run.</p>
+          <img src="board_screenshots/flow/101_4_approved_cash_moved.png" alt="Decided approval #1 with the executed payment">
+        </div></li>
+        <li class="step k-you"><div class="dot">4</div><div class="step-card">
+          <div class="step-top"><span class="step-title">Same run: purchase order 1, approved by Philipp</span><span class="tag t-you">You decide</span><span class="tag t-cash">Cash −$8.00</span></div>
+          <p>With the vendor unblocked (<code>get_vendor_status</code>), Accounting creates purchase order 1: 1 × CC-TEE-WHITE S × $8.00 = <b>$8.00</b>, expected 2026-08-31 + 5 lead days = <b>2026-09-05</b>. The run waits again; Philipp approves #2 seven seconds after the request, and checking goes $2,560.00 → $2,552.00. Nothing is sent to the vendor.</p>
+          <img src="board_screenshots/flow/101_5_purchase_order_approved.png" alt="Decided approval #2 for purchase order 1">
+        </div></li>
+        <li class="step k-done"><div class="dot">5</div><div class="step-card">
+          <div class="step-top"><span class="step-title">Same run: the customer draft and the final report</span><span class="tag t-done">Final · run a58b38b75ec7</span></div>
+          <p>Customer service saves draft 1: size S is expected on 2026-09-05 (an expected date, not a promise), and M, L and XL are available now. The Boss sets <b>waiting_on_vendor</b>, re-reads ticket, drafts and snapshot, and reports. One run: 93,355 tokens, 16 tool calls, 5 hand-offs, 5 min 22 s, of which 4 min 0 s was waiting for Philipp.</p>
+          <img src="board_screenshots/flow/101_6_final_waiting_on_vendor.png" alt="Desk, ticket 101, final state">
+        </div></li>
+      </ol>
+    </div>
+    <div class="body">
+      <div>
+        <div class="box">
+          <h3>Outcome</h3>
+          <p>Invoice 501 ($840.00) was paid to unblock Bulldog Print Co, then purchase order 1 for the one missing size-S tee ($8.00) was approved, in the same run. The shirt is expected <b>2026-09-05</b>. Draft 1 tells the customer that date and offers M, L or XL, which are in stock now.</p>
+          <div class="facts">
+            <div class="fact"><span>Cash</span><b class="bad">−$848.00</b></div>
+            <div class="fact"><span>Invoice 501</span>paid</div>
+            <div class="fact"><span>PO 1</span>approved · 1 × $8.00</div>
+            <div class="fact"><span>Draft</span>1</div>
+          </div>
+          <div class="runs"><span class="chip">a58b38b75ec7</span></div>
+        </div>
+        <div class="box" style="margin-top:14px">
+          <h3>Human approvals</h3>
+          <div class="approval"><div><span class="ag ag-human">#1</span> Pay invoice 501 to Bulldog Print Co<small>Phil · checking $3,400.00 → $2,560.00 · payment 1</small></div><span class="amt">−$840.00</span></div>
+          <div class="approval"><div><span class="ag ag-human">#2</span> Purchase order 1: 1 × CC-TEE-WHITE S<small>Phil · checking $2,560.00 → $2,552.00 · payment 2</small></div><span class="amt">−$8.00</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <h3>What each agent contributed</h3>
+        <ul class="agents">
+          <li><span class="ag ag-boss">Boss</span>Sent Inventory and Accounting out in parallel, authorized exactly $840.00, and after the payment had Accounting order exactly one size-S tee. Commissioned draft 1, set open → waiting_on_vendor, and re-read everything before its report.</li>
+          <li><span class="ag ag-inv">Inventory</span><code>check_order_fulfillment</code>: S 0 on hand, short 1, vendor blocked by invoice 501, earliest 2026-09-05 if paid; M 5 / L 3 / XL 2 in stock.</li>
+          <li><span class="ag ag-acc">Accounting</span>Affordability: $3,400.00 − $840.00 − $2,400.00 = $160.00. Submitted <code>pay_invoice</code> (#1) and waited for the human, checked with <code>get_vendor_status</code> that the vendor was unblocked, then created PO 1 for $8.00 (#2) and waited again.</li>
+          <li><span class="ag ag-cs">Customer service</span>Draft 1 from the customer-safe view only (no costs, vendors or invoices). Nothing was sent.</li>
+          <li><span class="ag ag-off">Facilities</span>Not needed.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 102 -->
+  <section class="ticket" id="t102">
+    <div class="ticket-head">
+      <div><h2>#102 · Rent due</h2><div class="who">Elm City Properties · lease 1, Chapel Street shop · rent notice</div></div>
+      <span class="status s-resolved">resolved</span>
+    </div>
+    <div class="flow">
+      <h3>How it went on the board · one run, one decision</h3>
+      <ol class="steps">
+        <li class="step k-team"><div class="dot">1</div><div class="step-card">
+          <div class="step-top"><span class="step-title">The team verifies the notice and waits for the rent decision</span><span class="tag t-team">Team · run 956009e61de4</span></div>
+          <p>Facilities matches the notice to lease 1: same landlord, $2,400.00 = monthly rent, due 2026-09-02, unpaid. The Boss authorizes exactly $2,400.00, and Accounting's <code>pay_rent</code> call goes on the board and waits. Checking is $2,552.00 after ticket 101.</p>
+          <img src="board_screenshots/flow/102_1_waiting_for_decision.png" alt="Desk, ticket 102, rent decision waiting">
+        </div></li>
+        <li class="step k-you"><div class="dot">2</div><div class="step-card">
+          <div class="step-top"><span class="step-title">Philipp approves rent #3</span><span class="tag t-you">You decide</span></div>
+          <p>The inbox shows the Boss's authorization, Accounting's reason and the cash impact: $2,552.00 → $152.00, with no other bill due within 30 days. Philipp approved it 45 s after the request, while the run waited.</p>
+          <img src="board_screenshots/flow/102_2_approve_rent.png" alt="Approvals inbox with the rent pending">
+        </div></li>
+        <li class="step k-cash"><div class="dot">3</div><div class="step-card">
+          <div class="step-top"><span class="step-title">$2,400.00 leaves checking</span><span class="tag t-cash">Cash −$2,400.00</span></div>
+          <p>The rent is paid to Elm City Properties: $2,552.00 → <b>$152.00</b>. The same transaction moves the lease's next due date to <b>2026-10-02</b>.</p>
+          <img src="board_screenshots/flow/102_3_rent_paid.png" alt="Decided approval #3 with the executed rent payment">
+        </div></li>
+        <li class="step k-done"><div class="dot">4</div><div class="step-card">
+          <div class="step-top"><span class="step-title">Same run: resolved</span><span class="tag t-done">Final · run 956009e61de4</span></div>
+          <p>The waiting <code>pay_rent</code> call returns the executed payment, and the Boss sets the ticket to <b>resolved</b> in the same run. The ticket card turns green. One run: 46,432 tokens, 93 s, of which 45 s was waiting for Philipp.</p>
+          <img src="board_screenshots/flow/102_4_final_resolved.png" alt="Desk, ticket 102, resolved">
+        </div></li>
+      </ol>
+    </div>
+    <div class="body">
+      <div>
+        <div class="box">
+          <h3>Outcome</h3>
+          <p>The notice was genuine and the rent was paid once, with Philipp's approval. The lease is now due next on <b>2026-10-02</b>.</p>
+          <div class="facts">
+            <div class="fact"><span>Cash</span><b class="bad">−$2,400.00</b></div>
+            <div class="fact"><span>Lease next due</span>2026-10-02</div>
+            <div class="fact"><span>Drafts</span>none (a landlord is not a customer)</div>
+          </div>
+          <div class="runs"><span class="chip">956009e61de4</span></div>
+        </div>
+        <div class="box" style="margin-top:14px">
+          <h3>Human approvals</h3>
+          <div class="approval"><div><span class="ag ag-human">#3</span> Pay rent for lease 1 to Elm City Properties<small>Phil · checking $2,552.00 → $152.00 · payment 3</small></div><span class="amt">−$2,400.00</span></div>
+        </div>
+      </div>
+      <div class="box">
+        <h3>What each agent contributed</h3>
+        <ul class="agents">
+          <li><span class="ag ag-boss">Boss</span>Sent Facilities to verify and authorized exactly $2,400.00. Once the board reported the payment executed, it set the ticket to resolved in the same run.</li>
+          <li><span class="ag ag-fac">Facilities</span><code>review_rent_payment</code>: landlord and amount match, due in 2 days, unpaid, $2,552.00 − $2,400.00 = $152.00.</li>
+          <li><span class="ag ag-acc">Accounting</span>Checked the ticket and cash and submitted <code>pay_rent</code> for exactly $2,400.00 (#3), then waited for the human.</li>
+          <li><span class="ag ag-off">Inventory</span><span class="ag ag-off">Customer service</span>Not needed.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ 103 -->
+  <section class="ticket" id="t103">
+    <div class="ticket-head">
+      <div><h2>#103 · Bulk hoodie discount</h2><div class="who">Yale AI Club · 20 × CC-HOOD-NAVY, size M · price request</div></div>
+      <span class="status s-customer">waiting on customer</span>
+    </div>
+    <div class="flow">
+      <h3>How it went on the board · one run, no human needed</h3>
+      <ol class="steps">
+        <li class="step k-done"><div class="dot">1</div><div class="step-card">
+          <div class="step-top"><span class="step-title">One run, no human needed</span><span class="tag t-done">Final · run 7836ec6adbd6</span></div>
+          <p>Accounting's <code>evaluate_bulk_discount_request</code> lays out the options. The Boss records <b>15%</b> on its own authority (up to 15% needs no human), so the inspector shows "No approval was needed" and the <b>You</b> node stays grey. Customer service saves draft 2 for the 8 in stock. One run: 50,665 tokens, 46 s.</p>
+          <img src="board_screenshots/flow/103_1_final_waiting_on_customer.png" alt="Desk, ticket 103, final state">
+        </div></li>
+      </ol>
+    </div>
+    <div class="body">
+      <div>
+        <div class="box">
+          <h3>Outcome</h3>
+          <p>The Boss recorded <b>15%</b> off: $58.00 × 0.85 = <b>$49.30</b> per hoodie, a ($49.30 − $22.00) / $49.30 = 55.4% margin. Only 8 are in stock, and restocking the other 12 would cost 12 × $22.00 = $264.00 with only $152.00 available. So draft 2 offers the 8: 8 × $49.30 = <b>$394.40</b>.</p>
+          <div class="facts">
+            <div class="fact"><span>Cash</span><b>$0.00</b></div>
+            <div class="fact"><span>Price override 1</span>15% · $49.30</div>
+            <div class="fact"><span>Recorded total (20)</span>$986.00</div>
+            <div class="fact"><span>Draft</span>2</div>
+          </div>
+          <div class="runs"><span class="chip">7836ec6adbd6</span></div>
+        </div>
+        <div class="box" style="margin-top:14px">
+          <h3>Human approvals</h3>
+          <p class="none">None needed: 15% is exactly the Boss's own limit (above 15% needs a named human), and the server recorded <code>approved_by</code> as empty.</p>
+        </div>
+      </div>
+      <div class="box">
+        <h3>What each agent contributed</h3>
+        <ul class="agents">
+          <li><span class="ag ag-boss">Boss</span>Read the stock in <code>get_ticket</code> and decided 15%, the most it may give without a human, with <code>record_discount_decision</code>. It offered only the 8 in stock and set waiting_on_customer.</li>
+          <li><span class="ag ag-acc">Accounting</span><code>evaluate_bulk_discount_request</code>: 8 on hand, 12 short. 15% → $49.30 (55.4%), maximum 52.5% at the 20% minimum margin. Restock costs $264.00 against $152.00, so it is not affordable.</li>
+          <li><span class="ag ag-cs">Customer service</span>Draft 2: 8 at $49.30 each ($394.40), the other 12 not available now, no restock date, no internal figures.</li>
+          <li><span class="ag ag-off">Inventory</span><span class="ag ag-off">Facilities</span>Not needed. The discount tool already covers stock and restock.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ extra -->
+  <h2 class="section" id="more">Approvals and Finance after the runs</h2>
+  <div class="extra">
+    <figure>
+      <img src="board_screenshots/approvals_decided.png" alt="Approvals view with three approved decisions">
+      <figcaption><b>Approvals</b>: 0 pending, 3 decided. Rent #3 is open, showing "Approved by Phil" and the executed result.</figcaption>
+    </figure>
+    <figure>
+      <img src="board_screenshots/finance.png" alt="Finance view with checking at $152">
+      <figcaption><b>Finance</b>: checking $152.00, no open bills within 30 days, and payments for invoice 501, PO 1 and rent 1, each approved by Phil.</figcaption>
+    </figure>
+  </div>
+</main>
+
+<div class="lightbox" id="lightbox"><img alt=""></div>
+
+<footer>Campus Customs back-office agent team · Homework 5 · Problem 9 · Screenshots of <code>frontend/</code> on <code>data/campus_customs_new.db</code>, taken during the runs</footer>
+
+<script>
+  const box = document.getElementById('lightbox');
+  document.querySelectorAll('main img').forEach(img => img.addEventListener('click', () => {
+    box.querySelector('img').src = img.src; box.classList.add('open');
+  }));
+  box.addEventListener('click', () => box.classList.remove('open'));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') box.classList.remove('open'); });
+</script>
+</body>
+</html>

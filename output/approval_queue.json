@@ -1,0 +1,163 @@
+[
+  {
+    "id": 1,
+    "kind": "invoice",
+    "tool": "pay_invoice",
+    "arguments": {
+      "invoice_id": 501,
+      "expected_amount": 840.0,
+      "reason": "Boss authorized invoice 501 for exactly $840.00: overdue invoice blocking replenishment for ticket 101. Cash position on 2026-08-31 is $3,400.00; reserving the $2,400.00 rent due 2026-09-02 leaves $160.00 after this invoice and rent."
+    },
+    "ticket_id": 101,
+    "title": "Pay invoice 501 ($840.00)",
+    "amount": 840.0,
+    "reason": "Shop rule: every payment needs human approval before cash leaves the account. Agent's reason: Boss authorized invoice 501 for exactly $840.00: overdue invoice blocking replenishment for ticket 101. Cash position on 2026-08-31 is $3,400.00; reserving the $2,400.00 rent due 2026-09-02 leaves $160.00 after this invoice and rent.",
+    "requested_by": "accounting",
+    "chain": [
+      "boss",
+      "accounting"
+    ],
+    "team_run_id": "a58b38b75ec7",
+    "boss_authorization": {
+      "kind": "invoice",
+      "ref_id": 501,
+      "amount": 840.0,
+      "reason": "Pay overdue invoice blocking replenishment for ticket 101; the payment is justified and affordable while reserving the $2,400 rent due 2026-09-02, leaving $160 after both obligations."
+    },
+    "status": "approved",
+    "created_at": "2026-10-10T21:02:49.021+00:00",
+    "decided_at": "2026-10-10T21:06:44.182+00:00",
+    "decided_by": "Phil",
+    "comment": "",
+    "result": {
+      "payment": {
+        "id": 1,
+        "kind": "invoice",
+        "ref_id": 501,
+        "amount": 840.0,
+        "account": "checking",
+        "paid_at": "2026-08-31",
+        "approved_by": "Phil"
+      },
+      "payee": "Bulldog Print Co",
+      "cash_before": 3400.0,
+      "cash_after": 2560.0,
+      "invoice_status_after": "paid",
+      "vendor_unblocked": true,
+      "lease_next_due_after": null,
+      "message": "Paid invoice 501 ($840.00) to Bulldog Print Co, approved by Phil. checking: $3,400.00 -> $2,560.00. Bulldog Print Co has no open invoices left and can ship again."
+    },
+    "follow_up_run_id": null
+  },
+  {
+    "id": 2,
+    "kind": "purchase_order",
+    "tool": "decide_purchase_order",
+    "arguments": {
+      "purchase_order_id": 1
+    },
+    "ticket_id": 101,
+    "title": "Purchase order 1: 1 x CC-TEE-WHITE S from Bulldog Print Co ($8.00)",
+    "amount": 8.0,
+    "reason": "Restock order prepared by accounting: Restock the exact one-unit shortfall for ticket 101, which requests one CC-TEE-WHITE in size S. Vendor 1 is unblocked; specialty is apparel reprint.",
+    "requested_by": "accounting",
+    "chain": [],
+    "team_run_id": null,
+    "boss_authorization": null,
+    "status": "approved",
+    "created_at": "2026-10-10T21:07:01.850+00:00",
+    "decided_at": "2026-10-10T21:07:11.533+00:00",
+    "decided_by": "Phil",
+    "comment": "",
+    "result": {
+      "purchase_order": {
+        "id": 1,
+        "vendor_id": 1,
+        "vendor_name": "Bulldog Print Co",
+        "sku": "CC-TEE-WHITE",
+        "size": "S",
+        "qty": 1,
+        "unit_cost": 8.0,
+        "total_cost": 8.0,
+        "ticket_id": 101,
+        "status": "approved",
+        "expected_arrival": "2026-09-05",
+        "reason": "Restock the exact one-unit shortfall for ticket 101, which requests one CC-TEE-WHITE in size S. Vendor 1 is unblocked; specialty is apparel reprint.",
+        "created_by": "accounting",
+        "created_at": "2026-08-31"
+      },
+      "decided_by": "Phil",
+      "comment": "",
+      "receipt": {
+        "payment": {
+          "id": 2,
+          "kind": "purchase_order",
+          "ref_id": 1,
+          "amount": 8.0,
+          "account": "checking",
+          "paid_at": "2026-08-31",
+          "approved_by": "Phil"
+        },
+        "payee": "Bulldog Print Co",
+        "cash_before": 2560.0,
+        "cash_after": 2552.0,
+        "invoice_status_after": null,
+        "vendor_unblocked": null,
+        "lease_next_due_after": null,
+        "message": "Paid purchase order 1 ($8.00) to Bulldog Print Co, approved by Phil. checking: $2,560.00 -> $2,552.00."
+      },
+      "message": "Purchase order 1 approved by Phil: $8.00 paid, 1 x CC-TEE-WHITE S expected 2026-09-05. Nothing was sent to the vendor."
+    },
+    "follow_up_run_id": null
+  },
+  {
+    "id": 3,
+    "kind": "rent",
+    "tool": "pay_rent",
+    "arguments": {
+      "lease_id": 1,
+      "expected_amount": 2400.0,
+      "reason": "Boss-authorized payment for Ticket 102: Elm City Properties rent for lease 1, $2,400.00 due 2026-09-02. Cash position shows $2,552.00 and $152.00 after known obligations; submit for human approval to avoid late rent."
+    },
+    "ticket_id": 102,
+    "title": "Pay rent for lease 1 ($2,400.00)",
+    "amount": 2400.0,
+    "reason": "Shop rule: every payment needs human approval before cash leaves the account. Agent's reason: Boss-authorized payment for Ticket 102: Elm City Properties rent for lease 1, $2,400.00 due 2026-09-02. Cash position shows $2,552.00 and $152.00 after known obligations; submit for human approval to avoid late rent.",
+    "requested_by": "accounting",
+    "chain": [
+      "boss",
+      "accounting"
+    ],
+    "team_run_id": "956009e61de4",
+    "boss_authorization": {
+      "kind": "rent",
+      "ref_id": 1,
+      "amount": 2400.0,
+      "reason": "Genuine, unpaid lease 1 rent of $2,400.00 is due 2026-09-02. Cash of $2,552.00 covers it and leaves $152.00; authorize promptly to avoid late rent."
+    },
+    "status": "approved",
+    "created_at": "2026-10-10T21:13:12.192+00:00",
+    "decided_at": "2026-10-10T21:13:59.024+00:00",
+    "decided_by": "Phil",
+    "comment": "",
+    "result": {
+      "payment": {
+        "id": 3,
+        "kind": "rent",
+        "ref_id": 1,
+        "amount": 2400.0,
+        "account": "checking",
+        "paid_at": "2026-08-31",
+        "approved_by": "Phil"
+      },
+      "payee": "Elm City Properties",
+      "cash_before": 2552.0,
+      "cash_after": 152.0,
+      "invoice_status_after": null,
+      "vendor_unblocked": null,
+      "lease_next_due_after": "2026-10-02",
+      "message": "Paid rent $2,400.00 for Chapel Street shop to Elm City Properties, approved by Phil. checking: $2,552.00 -> $152.00. Next rent due 2026-10-02."
+    },
+    "follow_up_run_id": null
+  }
+]

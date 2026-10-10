@@ -1,0 +1,130 @@
+[
+  {
+    "run_id": "a58b38b75ec7",
+    "ticket_id": 101,
+    "status": "finished",
+    "started_at": "2026-10-10T21:02:21.319+00:00",
+    "finished_at": "2026-10-10T21:07:43.455+00:00",
+    "stop_reason": "final_output",
+    "report": {
+      "summary": "Ticket 101 only: paid the overdue invoice blocking replenishment, obtained approval and payment for the exact shortfall PO, and saved a customer reply draft. The tee has not arrived or shipped, so ticket 101 remains waiting on the vendor.",
+      "cash_plan": "Cash was $3,400. Paid invoice 501 for $840 and PO 1 for $8; verified cash balance is $2,552. The $2,400 rent due 2026-09-02 remains unpaid, leaving $152 after that obligation. Invoice and PO payments were approved by Phil; no action was taken on the rent ticket.",
+      "tickets": [
+        {
+          "ticket_id": 101,
+          "final_status": "waiting_on_vendor",
+          "decision": "Size S was out of stock, so the order could not ship. Invoice 501 was paid and PO 1 for one size-S tee was approved and paid; expected arrival is 2026-09-05. Wait for vendor delivery, then fulfill and ship.",
+          "actions_taken": [
+            "Authorized and submitted payment of $840 for invoice 501; approved by Phil and executed.",
+            "Accounting created PO 1 for one CC-TEE-WHITE size S; approved by Phil and paid for $8.",
+            "Updated ticket 101 to waiting_on_vendor.",
+            "Saved customer-service draft 1; it offers available sizes M, L, and XL and states the expected restock date. Draft not sent.",
+            "Verified ticket status, PO, payments, cash balance, and draft."
+          ],
+          "awaiting_human": [],
+          "draft_ids": [
+            1
+          ],
+          "next_steps": [
+            "Wait for the expected 2026-09-05 arrival; then fulfill and ship the requested size S if received."
+          ]
+        }
+      ],
+      "risks": [
+        "The 2026-09-05 date is an expected arrival, not a guarantee; size S is still currently out of stock.",
+        "After reserving for rent due 2026-09-02, verified cash remaining is $152."
+      ]
+    },
+    "usage": {
+      "requests": 22,
+      "tool_calls": 22,
+      "input_tokens": 88503,
+      "output_tokens": 4852,
+      "total_tokens": 93355
+    },
+    "error": null,
+    "ticket_status_after": "waiting_on_vendor"
+  },
+  {
+    "run_id": "956009e61de4",
+    "ticket_id": 102,
+    "status": "finished",
+    "started_at": "2026-10-10T21:12:47.452+00:00",
+    "finished_at": "2026-10-10T21:14:19.976+00:00",
+    "stop_reason": "final_output",
+    "report": {
+      "summary": "Ticket 102 resolved: rent payment was authorized, approved by Phil, and executed; ticket status is resolved.",
+      "cash_plan": "Paid $2,400.00 for lease 1 rent from the $2,552.00 balance. Verified ending checking balance is $152.00; snapshot shows $0 due within 30 days and $152.00 remaining after listed obligations.",
+      "tickets": [
+        {
+          "ticket_id": 102,
+          "final_status": "resolved",
+          "decision": "Verified the $2,400.00 notice from Elm City Properties matched lease 1 and was unpaid, due 2026-09-02. Authorized payment; Phil approved it and it executed on 2026-08-31. Marked the ticket resolved.",
+          "actions_taken": [
+            "Facilities verified notice authenticity and rent amount.",
+            "Accounting submitted the authorized rent payment; human approval and execution were confirmed.",
+            "Updated ticket 102 status to resolved."
+          ],
+          "awaiting_human": [],
+          "draft_ids": [],
+          "next_steps": []
+        }
+      ],
+      "risks": [
+        "$152.00 remains in checking."
+      ]
+    },
+    "usage": {
+      "requests": 12,
+      "tool_calls": 12,
+      "input_tokens": 44612,
+      "output_tokens": 1820,
+      "total_tokens": 46432
+    },
+    "error": null,
+    "ticket_status_after": "resolved"
+  },
+  {
+    "run_id": "7836ec6adbd6",
+    "ticket_id": 103,
+    "status": "finished",
+    "started_at": "2026-10-10T21:15:35.475+00:00",
+    "finished_at": "2026-10-10T21:16:21.046+00:00",
+    "stop_reason": "final_output",
+    "report": {
+      "summary": "Ticket 103 is waiting on Yale AI Club. Recorded a 15% discount decision and made a customer-safe partial offer for the 8 size-M hoodies in stock; no payment, purchase order, shipment, or customer communication occurred.",
+      "cash_plan": "Shop snapshot showed $152 cash and $0 in open invoices or obligations due within 30 days, leaving $152 after known obligations. No payment was authorized or made; the offer requires customer acceptance and does not itself spend cash.",
+      "tickets": [
+        {
+          "ticket_id": 103,
+          "final_status": "waiting_on_customer",
+          "decision": "Offer the 8 available size-M hoodies at $49.30 each ($394.40 total) and do not promise the remaining 12 or a restock date. The customer must accept the partial offer before the order proceeds.",
+          "actions_taken": [
+            "Recorded a 15% discount decision for ticket 103; the decision tool records the ticket's requested quantity of 20 at $49.30 each ($986 total). The customer-facing offer is expressly limited to 8 available units.",
+            "Saved customer-service draft 2 and verified its content: it offers 8 units for $394.40, asks whether the customer accepts, and does not promise a restock date.",
+            "Updated ticket 103 to waiting_on_customer and verified the status and draft."
+          ],
+          "awaiting_human": [],
+          "draft_ids": [
+            2
+          ],
+          "next_steps": [
+            "Await Yale AI Club's response to draft 2; do not treat the draft as sent or the order as accepted."
+          ]
+        }
+      ],
+      "risks": [
+        "Discount decision is recorded against the ticket's quantity of 20 ($986 at the discounted unit price), while the customer-facing partial offer covers only the 8 currently available units. Confirm the accepted quantity before any order fulfillment or further pricing action."
+      ]
+    },
+    "usage": {
+      "requests": 12,
+      "tool_calls": 11,
+      "input_tokens": 48138,
+      "output_tokens": 2527,
+      "total_tokens": 50665
+    },
+    "error": null,
+    "ticket_status_after": "waiting_on_customer"
+  }
+]

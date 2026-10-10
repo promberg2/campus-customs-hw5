@@ -1,0 +1,1961 @@
+{
+  "suite": "Campus Customs MCP smoke test",
+  "problem": "Problem 4 — Add the MCP server to vibe coder and test each tool",
+  "run_at_utc": "2026-10-06T00:05:48+00:00",
+  "server": {
+    "name": "campus-customs",
+    "launch": {
+      "command": "C:/Users/phili/OneDrive/Desktop/AI Yale/Homework 5/hw5/.venv/Scripts/python.exe",
+      "args": [
+        "-m",
+        "mcp_server"
+      ],
+      "config_file": ".mcp.json"
+    },
+    "tools_listed": [
+      "get_shop_snapshot",
+      "list_tickets",
+      "get_ticket",
+      "update_ticket_status",
+      "record_discount_decision",
+      "check_order_fulfillment",
+      "review_rent_payment",
+      "evaluate_bulk_discount_request",
+      "check_stock",
+      "find_stock_shortfalls",
+      "get_vendor_status",
+      "ship_order_from_stock",
+      "get_cash_position",
+      "list_invoices",
+      "analyze_margin",
+      "pay_invoice",
+      "pay_rent",
+      "create_purchase_order",
+      "get_lease_status",
+      "get_customer_order_view",
+      "save_customer_draft",
+      "list_drafts"
+    ],
+    "database": "data/campus_customs_new.db"
+  },
+  "procedure": [
+    "Main tests: exactly one prompt and one test per tool, each running the tool on the ticket it exists to solve (101, 102, 103) and reconciling every value against the database.",
+    "Edge-case tests: kept separate, they probe wrong ticket types, unknown ids, schema limits, pricing boundaries and idempotency.",
+    "The server is launched over stdio with the exact command, args and env from .mcp.json, the same entry Cursor uses (registered in ~/.cursor/mcp.json as 'campus-customs').",
+    "Expected values are computed by independent SQL queries on data/campus_customs_new.db, opened read-only. The tool code is not imported, so the expectations cannot share a bug with the tools.",
+    "Each test sends one prompt's tool call and compares every reported value with the database value, naming the source column or formula for each check.",
+    "Negative tests check that bad input fails with a clear, actionable error and returns no data.",
+    "The database checksum is taken before and after the whole suite to prove the tools are read-only.",
+    "Each test was also run interactively in Cursor through the registered server, and the outputs matched."
+  ],
+  "structure": "main_tests holds the required one prompt and one test per tool (3 tests, 3 tools). edge_case_tests holds additional negative and boundary tests, grouped by tool.",
+  "summary": {
+    "main_tests": {
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "checks_passed": 69,
+      "checks_total": 69
+    },
+    "edge_case_tests": {
+      "tests": 9,
+      "passed": 9,
+      "failed": 0,
+      "checks_passed": 76,
+      "checks_total": 76
+    },
+    "all_tests": {
+      "tests": 12,
+      "passed": 12,
+      "failed": 0,
+      "checks_passed": 145,
+      "checks_total": 145
+    },
+    "database_sha256_before": "23686a90d698f7fa6f901a3f0a9774db9cbb31e13151c9e5717275f3321f360a",
+    "database_sha256_after": "23686a90d698f7fa6f901a3f0a9774db9cbb31e13151c9e5717275f3321f360a",
+    "database_unchanged": true
+  },
+  "main_tests": [
+    {
+      "id": "MAIN-1",
+      "category": "main",
+      "title": "Ticket 101: full field-by-field reconciliation against the database",
+      "tool": "check_order_fulfillment",
+      "prompt": "Use the campus-customs MCP server and call check_order_fulfillment for ticket 101. Treat this as an acceptance test, not a demo: every number in the response must trace back to data/campus_customs_new.db. Verify that 'today' equals desk.date_today and not the system clock; that qty_on_hand equals inventory.qty for the ticket's exact SKU and size; that the linked invoice is the one in tickets.invoice_id, with days_overdue computed against desk.date_today; that the supplier and lead_days come from the vendors row the invoice points to; that amount_to_unblock_supplier is the sum of that vendor's open invoices; that cash after unblocking equals the checking balance minus that sum; and that the arrival date is today plus lead_days. Also confirm the outcome is blocked_by_unpaid_invoice, that the payment comes back only as a proposal with requires_human_approval=true and approved=false, and that alternative sizes are only sizes with stock above zero.",
+      "arguments": {
+        "ticket_id": 101
+      },
+      "calls": 1,
+      "result": "PASS",
+      "checks_passed": 19,
+      "checks_total": 19,
+      "checks": [
+        {
+          "field": "today",
+          "expected_from_db": "2026-08-31",
+          "tool_reported": "2026-08-31",
+          "source": "desk.date_today",
+          "pass": true
+        },
+        {
+          "field": "qty_requested",
+          "expected_from_db": 1,
+          "tool_reported": 1,
+          "source": "tickets.qty (id=101)",
+          "pass": true
+        },
+        {
+          "field": "qty_on_hand",
+          "expected_from_db": 0,
+          "tool_reported": 0,
+          "source": "inventory.qty (sku, size of ticket 101)",
+          "pass": true
+        },
+        {
+          "field": "qty_shortfall",
+          "expected_from_db": 1,
+          "tool_reported": 1,
+          "source": "tickets.qty - inventory.qty",
+          "pass": true
+        },
+        {
+          "field": "unit_price",
+          "expected_from_db": 28.0,
+          "tool_reported": 28.0,
+          "source": "pricing.list_price",
+          "pass": true
+        },
+        {
+          "field": "order_total",
+          "expected_from_db": 28.0,
+          "tool_reported": 28.0,
+          "source": "tickets.qty x pricing.list_price",
+          "pass": true
+        },
+        {
+          "field": "linked_invoice.id",
+          "expected_from_db": 501,
+          "tool_reported": 501,
+          "source": "tickets.invoice_id",
+          "pass": true
+        },
+        {
+          "field": "linked_invoice.amount",
+          "expected_from_db": 840.0,
+          "tool_reported": 840.0,
+          "source": "invoices.amount",
+          "pass": true
+        },
+        {
+          "field": "linked_invoice.days_overdue",
+          "expected_from_db": 3,
+          "tool_reported": 3,
+          "source": "desk.date_today - invoices.due_date",
+          "pass": true
+        },
+        {
+          "field": "supplier.name",
+          "expected_from_db": "Bulldog Print Co",
+          "tool_reported": "Bulldog Print Co",
+          "source": "vendors.name via invoices.vendor_id",
+          "pass": true
+        },
+        {
+          "field": "supplier.lead_days",
+          "expected_from_db": 5,
+          "tool_reported": 5,
+          "source": "vendors.lead_days",
+          "pass": true
+        },
+        {
+          "field": "amount_to_unblock_supplier",
+          "expected_from_db": 840.0,
+          "tool_reported": 840.0,
+          "source": "SUM(invoices.amount) open for that vendor",
+          "pass": true
+        },
+        {
+          "field": "cash.balance",
+          "expected_from_db": 3400.0,
+          "tool_reported": 3400.0,
+          "source": "cash_accounts.balance (checking)",
+          "pass": true
+        },
+        {
+          "field": "cash_after_unblocking",
+          "expected_from_db": 2560.0,
+          "tool_reported": 2560.0,
+          "source": "cash_accounts.balance - open invoices of vendor",
+          "pass": true
+        },
+        {
+          "field": "earliest_arrival_if_unblocked_today",
+          "expected_from_db": "2026-09-05",
+          "tool_reported": "2026-09-05",
+          "source": "desk.date_today + vendors.lead_days",
+          "pass": true
+        },
+        {
+          "field": "outcome",
+          "expected_from_db": "blocked_by_unpaid_invoice",
+          "tool_reported": "blocked_by_unpaid_invoice",
+          "source": "derived",
+          "pass": true
+        },
+        {
+          "field": "payments_to_approve[0].ref_id",
+          "expected_from_db": 501,
+          "tool_reported": 501,
+          "source": "invoices.id",
+          "pass": true
+        },
+        {
+          "field": "payments_to_approve[0].approved",
+          "expected_from_db": false,
+          "tool_reported": false,
+          "source": "proposal only",
+          "pass": true
+        },
+        {
+          "field": "other_sizes_in_stock",
+          "expected_from_db": [
+            "M",
+            "L",
+            "XL"
+          ],
+          "tool_reported": [
+            "M",
+            "L",
+            "XL"
+          ],
+          "source": "inventory.qty > 0",
+          "pass": true
+        }
+      ],
+      "tool_output": {
+        "ticket": {
+          "id": 101,
+          "type": "customer_order",
+          "requester": "Tauhid Zaman",
+          "subject": "Bulldog tee",
+          "sku": "CC-TEE-WHITE",
+          "size": "S",
+          "qty": 1,
+          "lease_id": null,
+          "invoice_id": 501,
+          "status": "open",
+          "notes": "Needs a tee in size S.",
+          "created_at": "2026-08-31T09:15:00-04:00"
+        },
+        "today": "2026-08-31",
+        "outcome": "blocked_by_unpaid_invoice",
+        "summary": "Classic Bulldog Tee (S) is short by 1. The restock comes from Bulldog Print Co, who will not ship while invoice(s) 501 totalling $840.00 are unpaid. If paid today, it can arrive by 2026-09-05.",
+        "sku": "CC-TEE-WHITE",
+        "product_name": "Classic Bulldog Tee",
+        "size": "S",
+        "location": "Aisle B",
+        "qty_requested": 1,
+        "qty_on_hand": 0,
+        "qty_shortfall": 1,
+        "can_ship_now": false,
+        "unit_price": 28.0,
+        "order_total": 28.0,
+        "other_sizes_in_stock": [
+          {
+            "size": "M",
+            "qty": 5,
+            "location": "Aisle B"
+          },
+          {
+            "size": "L",
+            "qty": 3,
+            "location": "Aisle B"
+          },
+          {
+            "size": "XL",
+            "qty": 2,
+            "location": "Aisle B"
+          }
+        ],
+        "linked_invoice": {
+          "id": 501,
+          "vendor_id": 1,
+          "vendor_name": "Bulldog Print Co",
+          "amount": 840.0,
+          "due_date": "2026-08-28",
+          "status": "open",
+          "description": "Rush reprint CC-TEE-WHITE S",
+          "is_overdue": true,
+          "days_overdue": 3
+        },
+        "supplier": {
+          "id": 1,
+          "name": "Bulldog Print Co",
+          "specialty": "apparel reprint",
+          "lead_days": 5
+        },
+        "supplier_open_invoices": [
+          {
+            "id": 501,
+            "vendor_id": 1,
+            "vendor_name": "Bulldog Print Co",
+            "amount": 840.0,
+            "due_date": "2026-08-28",
+            "status": "open",
+            "description": "Rush reprint CC-TEE-WHITE S",
+            "is_overdue": true,
+            "days_overdue": 3
+          }
+        ],
+        "supplier_blocked": true,
+        "amount_to_unblock_supplier": 840.0,
+        "cash": {
+          "account": "checking",
+          "balance": 3400.0,
+          "as_of": "2026-08-31"
+        },
+        "cash_after_unblocking": 2560.0,
+        "can_afford_to_unblock": true,
+        "earliest_arrival_if_unblocked_today": "2026-09-05",
+        "payments_to_approve": [
+          {
+            "kind": "invoice",
+            "ref_id": 501,
+            "payee": "Bulldog Print Co",
+            "amount": 840.0,
+            "account": "checking",
+            "pay_on": "2026-08-31",
+            "requires_human_approval": true,
+            "approved": false
+          }
+        ],
+        "next_steps": [
+          "Request human approval to pay $840.00 to Bulldog Print Co (invoice 501); cash would go from $3,400.00 to $2,560.00.",
+          "After payment, mark invoice 501 as paid so Bulldog Print Co ships again.",
+          "Draft (do not send) a reply to Tauhid Zaman: size S is out of stock and can arrive by 2026-09-05.",
+          "Optionally offer sizes in stock now: M (5), L (3), XL (2)."
+        ]
+      }
+    },
+    {
+      "id": "MAIN-2",
+      "category": "main",
+      "title": "Ticket 102: full reconciliation, landlord verification and cash picture",
+      "tool": "review_rent_payment",
+      "prompt": "Use the campus-customs MCP server and call review_rent_payment for ticket 102. Audit it like a payment control. Confirm that the lease comes from tickets.lease_id; that the rent, landlord and due date match the leases row exactly; that days_until_due is computed from desk.date_today; that the requester is verified against the landlord on the lease, not just trusted; that no rent payment for this lease exists in payments; that cash_after_rent equals the checking balance minus the rent; and that the competing open invoices are included, so cash_after_rent_and_open_invoices equals balance minus rent minus every open invoice. The response must be a payment proposal for human approval (approved=false), never a payment, and next_due_after_payment must be exactly one month after leases.next_due.",
+      "arguments": {
+        "ticket_id": 102
+      },
+      "calls": 1,
+      "result": "PASS",
+      "checks_passed": 17,
+      "checks_total": 17,
+      "checks": [
+        {
+          "field": "today",
+          "expected_from_db": "2026-08-31",
+          "tool_reported": "2026-08-31",
+          "source": "desk.date_today",
+          "pass": true
+        },
+        {
+          "field": "lease.id",
+          "expected_from_db": 1,
+          "tool_reported": 1,
+          "source": "tickets.lease_id (id=102)",
+          "pass": true
+        },
+        {
+          "field": "lease.landlord",
+          "expected_from_db": "Elm City Properties",
+          "tool_reported": "Elm City Properties",
+          "source": "leases.landlord",
+          "pass": true
+        },
+        {
+          "field": "lease.monthly_rent",
+          "expected_from_db": 2400.0,
+          "tool_reported": 2400.0,
+          "source": "leases.monthly_rent",
+          "pass": true
+        },
+        {
+          "field": "lease.next_due",
+          "expected_from_db": "2026-09-02",
+          "tool_reported": "2026-09-02",
+          "source": "leases.next_due",
+          "pass": true
+        },
+        {
+          "field": "days_until_due",
+          "expected_from_db": 2,
+          "tool_reported": 2,
+          "source": "leases.next_due - desk.date_today",
+          "pass": true
+        },
+        {
+          "field": "requester_matches_landlord",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "tickets.requester = leases.landlord",
+          "pass": true
+        },
+        {
+          "field": "cash.balance",
+          "expected_from_db": 3400.0,
+          "tool_reported": 3400.0,
+          "source": "cash_accounts.balance (checking)",
+          "pass": true
+        },
+        {
+          "field": "cash_after_rent",
+          "expected_from_db": 1000.0,
+          "tool_reported": 1000.0,
+          "source": "cash_accounts.balance - leases.monthly_rent",
+          "pass": true
+        },
+        {
+          "field": "other_open_invoices_total",
+          "expected_from_db": 840.0,
+          "tool_reported": 840.0,
+          "source": "SUM(invoices.amount) WHERE status='open'",
+          "pass": true
+        },
+        {
+          "field": "cash_after_rent_and_open_invoices",
+          "expected_from_db": 160.0,
+          "tool_reported": 160.0,
+          "source": "balance - rent - open invoices",
+          "pass": true
+        },
+        {
+          "field": "payment_proposal.amount",
+          "expected_from_db": 2400.0,
+          "tool_reported": 2400.0,
+          "source": "leases.monthly_rent",
+          "pass": true
+        },
+        {
+          "field": "payment_proposal.payee",
+          "expected_from_db": "Elm City Properties",
+          "tool_reported": "Elm City Properties",
+          "source": "leases.landlord",
+          "pass": true
+        },
+        {
+          "field": "next_due_after_payment",
+          "expected_from_db": "2026-10-02",
+          "tool_reported": "2026-10-02",
+          "source": "leases.next_due + 1 month",
+          "pass": true
+        },
+        {
+          "field": "outcome",
+          "expected_from_db": "ready_for_approval",
+          "tool_reported": "ready_for_approval",
+          "source": "derived",
+          "pass": true
+        },
+        {
+          "field": "rent_payments_on_record",
+          "expected_from_db": 0,
+          "tool_reported": 0,
+          "source": "payments (kind='rent')",
+          "pass": true
+        },
+        {
+          "field": "payment_proposal.approved",
+          "expected_from_db": false,
+          "tool_reported": false,
+          "source": "proposal only",
+          "pass": true
+        }
+      ],
+      "tool_output": {
+        "ticket": {
+          "id": 102,
+          "type": "rent_notice",
+          "requester": "Elm City Properties",
+          "subject": "Rent due",
+          "sku": null,
+          "size": null,
+          "qty": null,
+          "lease_id": 1,
+          "invoice_id": null,
+          "status": "open",
+          "notes": "Email: shop rent due in 2 days.",
+          "created_at": "2026-08-31T11:05:00-04:00"
+        },
+        "today": "2026-08-31",
+        "outcome": "ready_for_approval",
+        "summary": "Rent of $2,400.00 for Chapel Street shop to Elm City Properties is due in 2 day(s) (2026-09-02). The requester matches the lease and cash covers it ($3,400.00 -> $1,000.00).",
+        "lease": {
+          "id": 1,
+          "space_name": "Chapel Street shop",
+          "landlord": "Elm City Properties",
+          "monthly_rent": 2400.0,
+          "next_due": "2026-09-02",
+          "notes": null
+        },
+        "days_until_due": 2,
+        "due_status": "due_soon",
+        "requester_matches_landlord": true,
+        "already_paid_this_period": false,
+        "rent_payments_on_record": [],
+        "cash": {
+          "account": "checking",
+          "balance": 3400.0,
+          "as_of": "2026-08-31"
+        },
+        "cash_after_rent": 1000.0,
+        "sufficient_funds": true,
+        "other_open_invoices": [
+          {
+            "id": 501,
+            "vendor_id": 1,
+            "vendor_name": "Bulldog Print Co",
+            "amount": 840.0,
+            "due_date": "2026-08-28",
+            "status": "open",
+            "description": "Rush reprint CC-TEE-WHITE S",
+            "is_overdue": true,
+            "days_overdue": 3
+          }
+        ],
+        "other_open_invoices_total": 840.0,
+        "cash_after_rent_and_open_invoices": 160.0,
+        "covers_all_known_obligations": true,
+        "payment_proposal": {
+          "kind": "rent",
+          "ref_id": 1,
+          "payee": "Elm City Properties",
+          "amount": 2400.0,
+          "account": "checking",
+          "pay_on": "2026-08-31",
+          "requires_human_approval": true,
+          "approved": false
+        },
+        "next_due_after_payment": "2026-10-02",
+        "next_steps": [
+          "Request human approval to pay $2,400.00 rent to Elm City Properties from checking.",
+          "After payment: record it in payments, set checking to $1,000.00, move lease 1 next_due to 2026-10-02, and close ticket 102.",
+          "Plan cash together with open invoice(s) 501 ($840.00): paying everything leaves $160.00."
+        ]
+      }
+    },
+    {
+      "id": "MAIN-3",
+      "category": "main",
+      "title": "Ticket 103: stock, cost floor, margin table, blocked vendor and cash squeeze",
+      "tool": "evaluate_bulk_discount_request",
+      "prompt": "Use the campus-customs MCP server and call evaluate_bulk_discount_request for ticket 103 with the default discount scenarios. Reconcile it against the database: on-hand stock for CC-HOOD-NAVY size M, units fillable now and the shortfall; list price and unit cost from pricing; list and cost totals for the full quantity; the largest discount that still keeps the price at or above unit cost; restock cost for the shortfall at unit cost; and known obligations as every open invoice plus rent due within 30 days of desk.date_today. Check that every default scenario's unit price equals list_price x (1 - discount) rounded to cents, that Bulldog Print Co is flagged as blocked because of its open invoice, and that the tool says a human must decide the price, because the database has no discount policy.",
+      "arguments": {
+        "ticket_id": 103
+      },
+      "calls": 1,
+      "result": "PASS",
+      "checks_passed": 33,
+      "checks_total": 33,
+      "checks": [
+        {
+          "field": "today",
+          "expected_from_db": "2026-08-31",
+          "tool_reported": "2026-08-31",
+          "source": "desk.date_today",
+          "pass": true
+        },
+        {
+          "field": "qty_requested",
+          "expected_from_db": 20,
+          "tool_reported": 20,
+          "source": "tickets.qty (id=103)",
+          "pass": true
+        },
+        {
+          "field": "qty_on_hand",
+          "expected_from_db": 8,
+          "tool_reported": 8,
+          "source": "inventory.qty (sku, size of ticket 103)",
+          "pass": true
+        },
+        {
+          "field": "qty_fillable_now",
+          "expected_from_db": 8,
+          "tool_reported": 8,
+          "source": "MIN(tickets.qty, inventory.qty)",
+          "pass": true
+        },
+        {
+          "field": "qty_shortfall",
+          "expected_from_db": 12,
+          "tool_reported": 12,
+          "source": "tickets.qty - inventory.qty",
+          "pass": true
+        },
+        {
+          "field": "list_price",
+          "expected_from_db": 58.0,
+          "tool_reported": 58.0,
+          "source": "pricing.list_price",
+          "pass": true
+        },
+        {
+          "field": "unit_cost",
+          "expected_from_db": 22.0,
+          "tool_reported": 22.0,
+          "source": "pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "margin_per_unit",
+          "expected_from_db": 36.0,
+          "tool_reported": 36.0,
+          "source": "list_price - unit_cost",
+          "pass": true
+        },
+        {
+          "field": "list_total",
+          "expected_from_db": 1160.0,
+          "tool_reported": 1160.0,
+          "source": "tickets.qty x list_price",
+          "pass": true
+        },
+        {
+          "field": "cost_total",
+          "expected_from_db": 440.0,
+          "tool_reported": 440.0,
+          "source": "tickets.qty x unit_cost",
+          "pass": true
+        },
+        {
+          "field": "max_discount_pct_above_cost",
+          "expected_from_db": 62.0,
+          "tool_reported": 62.0,
+          "source": "floor to 0.1 of (1 - unit_cost/list_price) x 100",
+          "pass": true
+        },
+        {
+          "field": "restock_cost_for_shortfall",
+          "expected_from_db": 264.0,
+          "tool_reported": 264.0,
+          "source": "shortfall x unit_cost",
+          "pass": true
+        },
+        {
+          "field": "known_obligations_total",
+          "expected_from_db": 3240.0,
+          "tool_reported": 3240.0,
+          "source": "open invoices + rent due within 30 days of desk.date_today",
+          "pass": true
+        },
+        {
+          "field": "cash.balance",
+          "expected_from_db": 3400.0,
+          "tool_reported": 3400.0,
+          "source": "cash_accounts.balance (checking)",
+          "pass": true
+        },
+        {
+          "field": "cash_after_known_obligations",
+          "expected_from_db": 160.0,
+          "tool_reported": 160.0,
+          "source": "balance - known obligations",
+          "pass": true
+        },
+        {
+          "field": "can_afford_restock_after_obligations",
+          "expected_from_db": false,
+          "tool_reported": false,
+          "source": "cash after obligations >= restock cost",
+          "pass": true
+        },
+        {
+          "field": "outcome",
+          "expected_from_db": "partial_stock",
+          "tool_reported": "partial_stock",
+          "source": "derived",
+          "pass": true
+        },
+        {
+          "field": "discount_policy_on_record",
+          "expected_from_db": false,
+          "tool_reported": false,
+          "source": "no discount policy in database",
+          "pass": true
+        },
+        {
+          "field": "boss_discount_authority_pct",
+          "expected_from_db": 15.0,
+          "tool_reported": 15.0,
+          "source": "shop policy constant (Problem 5)",
+          "pass": true
+        },
+        {
+          "field": "blocked_vendors",
+          "expected_from_db": [
+            "Bulldog Print Co"
+          ],
+          "tool_reported": [
+            "Bulldog Print Co"
+          ],
+          "source": "vendors with open invoices",
+          "pass": true
+        },
+        {
+          "field": "scenario order (deduped, ascending)",
+          "expected_from_db": [
+            0.0,
+            5.0,
+            10.0,
+            15.0,
+            20.0,
+            25.0
+          ],
+          "tool_reported": [
+            0.0,
+            5.0,
+            10.0,
+            15.0,
+            20.0,
+            25.0
+          ],
+          "source": "input",
+          "pass": true
+        },
+        {
+          "field": "scenario 0.0% unit_price",
+          "expected_from_db": 58.0,
+          "tool_reported": 58.0,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 0.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "scenario 5.0% unit_price",
+          "expected_from_db": 55.1,
+          "tool_reported": 55.1,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 5.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "scenario 10.0% unit_price",
+          "expected_from_db": 52.2,
+          "tool_reported": 52.2,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 10.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "scenario 15.0% unit_price",
+          "expected_from_db": 49.3,
+          "tool_reported": 49.3,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 15.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "scenario 20.0% unit_price",
+          "expected_from_db": 46.4,
+          "tool_reported": 46.4,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 20.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        },
+        {
+          "field": "scenario 25.0% unit_price",
+          "expected_from_db": 43.5,
+          "tool_reported": 43.5,
+          "source": "pricing.list_price x (1 - discount)",
+          "pass": true
+        },
+        {
+          "field": "scenario 25.0% above_cost",
+          "expected_from_db": true,
+          "tool_reported": true,
+          "source": "unit_price >= pricing.unit_cost",
+          "pass": true
+        }
+      ],
+      "tool_output": {
+        "ticket": {
+          "id": 103,
+          "type": "price_override",
+          "requester": "Yale AI Club",
+          "subject": "Bulk hoodie discount",
+          "sku": "CC-HOOD-NAVY",
+          "size": "M",
+          "qty": 20,
+          "lease_id": null,
+          "invoice_id": null,
+          "status": "open",
+          "notes": "Student org wants 20 hoodies, size M, asking for a bulk discount.",
+          "created_at": "2026-08-31T16:55:00-04:00"
+        },
+        "today": "2026-08-31",
+        "outcome": "partial_stock",
+        "summary": "Yale AI Club asks for 20 x Basic Hoodie Big Yale (M) at a discount. 8 in stock, 12 short. List total $1,160.00; cost floor $22.00/unit (break-even at 62.0% off). Business rules: margin must stay at or above 20% (max 52.5% off); the Boss may grant up to 15%, anything above needs a named human approver.",
+        "sku": "CC-HOOD-NAVY",
+        "product_name": "Basic Hoodie Big Yale",
+        "size": "M",
+        "location": "Aisle A",
+        "qty_requested": 20,
+        "qty_on_hand": 8,
+        "qty_fillable_now": 8,
+        "qty_shortfall": 12,
+        "other_sizes_in_stock": [
+          {
+            "size": "S",
+            "qty": 4,
+            "location": "Aisle A"
+          },
+          {
+            "size": "L",
+            "qty": 14,
+            "location": "Aisle A"
+          },
+          {
+            "size": "XL",
+            "qty": 6,
+            "location": "Aisle A"
+          }
+        ],
+        "list_price": 58.0,
+        "unit_cost": 22.0,
+        "margin_per_unit": 36.0,
+        "margin_pct": 62.1,
+        "list_total": 1160.0,
+        "cost_total": 440.0,
+        "max_discount_pct_above_cost": 62.0,
+        "discount_scenarios": [
+          {
+            "discount_pct": 0.0,
+            "unit_price": 58.0,
+            "order_total": 1160.0,
+            "total_margin": 720.0,
+            "margin_pct": 62.1,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": true
+          },
+          {
+            "discount_pct": 5.0,
+            "unit_price": 55.1,
+            "order_total": 1102.0,
+            "total_margin": 662.0,
+            "margin_pct": 60.1,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": true
+          },
+          {
+            "discount_pct": 10.0,
+            "unit_price": 52.2,
+            "order_total": 1044.0,
+            "total_margin": 604.0,
+            "margin_pct": 57.9,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": true
+          },
+          {
+            "discount_pct": 15.0,
+            "unit_price": 49.3,
+            "order_total": 986.0,
+            "total_margin": 546.0,
+            "margin_pct": 55.4,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": true
+          },
+          {
+            "discount_pct": 20.0,
+            "unit_price": 46.4,
+            "order_total": 928.0,
+            "total_margin": 488.0,
+            "margin_pct": 52.6,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": false
+          },
+          {
+            "discount_pct": 25.0,
+            "unit_price": 43.5,
+            "order_total": 870.0,
+            "total_margin": 430.0,
+            "margin_pct": 49.4,
+            "above_cost": true,
+            "allowed": true,
+            "within_boss_authority": false
+          }
+        ],
+        "discount_policy_on_record": false,
+        "boss_discount_authority_pct": 15.0,
+        "min_margin_pct_after_discount": 20.0,
+        "restock_cost_for_shortfall": 264.0,
+        "restock_options": [
+          {
+            "vendor": {
+              "id": 1,
+              "name": "Bulldog Print Co",
+              "specialty": "apparel reprint",
+              "lead_days": 5
+            },
+            "open_invoices": [
+              {
+                "id": 501,
+                "vendor_id": 1,
+                "vendor_name": "Bulldog Print Co",
+                "amount": 840.0,
+                "due_date": "2026-08-28",
+                "status": "open",
+                "description": "Rush reprint CC-TEE-WHITE S",
+                "is_overdue": true,
+                "days_overdue": 3
+              }
+            ],
+            "open_invoice_total": 840.0,
+            "blocked": true,
+            "earliest_arrival_if_ordered_today": "2026-09-05"
+          },
+          {
+            "vendor": {
+              "id": 2,
+              "name": "Elm City Gifts",
+              "specialty": "mugs and small goods",
+              "lead_days": 3
+            },
+            "open_invoices": [],
+            "open_invoice_total": 0.0,
+            "blocked": false,
+            "earliest_arrival_if_ordered_today": "2026-09-03"
+          },
+          {
+            "vendor": {
+              "id": 3,
+              "name": "QuickShip CT",
+              "specialty": "local courier",
+              "lead_days": 1
+            },
+            "open_invoices": [],
+            "open_invoice_total": 0.0,
+            "blocked": false,
+            "earliest_arrival_if_ordered_today": "2026-09-01"
+          }
+        ],
+        "cash": {
+          "account": "checking",
+          "balance": 3400.0,
+          "as_of": "2026-08-31"
+        },
+        "known_obligations_total": 3240.0,
+        "cash_after_known_obligations": 160.0,
+        "can_afford_restock_after_obligations": false,
+        "next_steps": [
+          "Boss decides the discount: up to 15% alone, up to 52.5% with human approval, never more; the scenarios show margin and authority for each option.",
+          "Reserve the 8 in stock at Aisle A and offer them now.",
+          "The remaining 12 need a restock ($264.00 at cost). Blocked vendors until paid: Bulldog Print Co ($840.00 open). Pick the vendor whose specialty fits the product.",
+          "Cash after known obligations is $160.00, below the $264.00 restock cost: flag this to a human before committing to the full quantity.",
+          "Sizes in stock now: S (4), L (14), XL (6).",
+          "Draft (do not send) a reply to Yale AI Club with the approved price and delivery plan."
+        ]
+      }
+    }
+  ],
+  "edge_case_tests": {
+    "check_order_fulfillment": [
+      {
+        "id": "EDGE-COF-1",
+        "category": "edge_case",
+        "title": "Wrong ticket type is rejected and routed to the correct tool",
+        "tool": "check_order_fulfillment",
+        "prompt": "Negative test for check_order_fulfillment. Call it with ticket 102, which is a rent_notice, not a customer_order. The tool must not try to interpret a rent notice as an order, must not return a partial report, and must fail with a clear error that names the actual ticket type and points the caller to the correct tool (review_rent_payment), so an agent can recover by itself in one step.",
+        "arguments": {
+          "ticket_id": 102
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 3,
+        "checks_total": 3,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "rent_notice",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "review_rent_payment",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "Ticket 102 is a 'rent_notice' ticket, but this tool handles 'customer_order' tickets. Use review_rent_payment instead."
+        }
+      },
+      {
+        "id": "EDGE-COF-2",
+        "category": "edge_case",
+        "title": "Unknown ticket id fails clearly and lists valid ids",
+        "tool": "check_order_fulfillment",
+        "prompt": "Negative test: call check_order_fulfillment with ticket 999, which does not exist in the tickets table. The tool must not invent a ticket or return empty defaults. It must return an error saying the ticket does not exist and list the ticket ids that do exist, so the agent can correct its input without another lookup.",
+        "arguments": {
+          "ticket_id": 999
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 6,
+        "checks_total": 6,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "999",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "does not exist",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "101",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "102",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "103",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "Ticket 999 does not exist. Known ticket ids: [101, 102, 103]."
+        }
+      },
+      {
+        "id": "EDGE-COF-3",
+        "category": "edge_case",
+        "title": "Input schema boundary: ticket_id below the minimum is rejected before any database access",
+        "tool": "check_order_fulfillment",
+        "prompt": "Boundary test on the input contract. The published input schema says ticket_id is an integer with minimum 1. Call check_order_fulfillment with ticket_id 0 and confirm the server rejects it during input validation, before any database access, instead of running a query with an invalid id.",
+        "arguments": {
+          "ticket_id": 0
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 2,
+        "checks_total": 2,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "ticket_id",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "1 validation error for call[check_order_fulfillment]\nticket_id\n  Input should be greater than or equal to 1 [type=greater_than_equal, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than_equal"
+        }
+      },
+      {
+        "id": "EDGE-COF-4",
+        "category": "edge_case",
+        "title": "Idempotency and read-only guarantee",
+        "tool": "check_order_fulfillment",
+        "prompt": "Idempotency and side-effect test. The tool is published with readOnlyHint=true and idempotentHint=true; prove both. Take a SHA-256 checksum of data/campus_customs_new.db, call check_order_fulfillment for ticket 101 twice in a row, and confirm that both responses are byte-for-byte identical and that the database checksum is unchanged afterwards. A read tool that changes state, or returns different answers for the same input, would break any agent that retries a call.",
+        "arguments": {
+          "ticket_id": 101
+        },
+        "calls": 2,
+        "result": "PASS",
+        "checks_passed": 21,
+        "checks_total": 21,
+        "checks": [
+          {
+            "field": "today",
+            "expected_from_db": "2026-08-31",
+            "tool_reported": "2026-08-31",
+            "source": "desk.date_today",
+            "pass": true
+          },
+          {
+            "field": "qty_requested",
+            "expected_from_db": 1,
+            "tool_reported": 1,
+            "source": "tickets.qty (id=101)",
+            "pass": true
+          },
+          {
+            "field": "qty_on_hand",
+            "expected_from_db": 0,
+            "tool_reported": 0,
+            "source": "inventory.qty (sku, size of ticket 101)",
+            "pass": true
+          },
+          {
+            "field": "qty_shortfall",
+            "expected_from_db": 1,
+            "tool_reported": 1,
+            "source": "tickets.qty - inventory.qty",
+            "pass": true
+          },
+          {
+            "field": "unit_price",
+            "expected_from_db": 28.0,
+            "tool_reported": 28.0,
+            "source": "pricing.list_price",
+            "pass": true
+          },
+          {
+            "field": "order_total",
+            "expected_from_db": 28.0,
+            "tool_reported": 28.0,
+            "source": "tickets.qty x pricing.list_price",
+            "pass": true
+          },
+          {
+            "field": "linked_invoice.id",
+            "expected_from_db": 501,
+            "tool_reported": 501,
+            "source": "tickets.invoice_id",
+            "pass": true
+          },
+          {
+            "field": "linked_invoice.amount",
+            "expected_from_db": 840.0,
+            "tool_reported": 840.0,
+            "source": "invoices.amount",
+            "pass": true
+          },
+          {
+            "field": "linked_invoice.days_overdue",
+            "expected_from_db": 3,
+            "tool_reported": 3,
+            "source": "desk.date_today - invoices.due_date",
+            "pass": true
+          },
+          {
+            "field": "supplier.name",
+            "expected_from_db": "Bulldog Print Co",
+            "tool_reported": "Bulldog Print Co",
+            "source": "vendors.name via invoices.vendor_id",
+            "pass": true
+          },
+          {
+            "field": "supplier.lead_days",
+            "expected_from_db": 5,
+            "tool_reported": 5,
+            "source": "vendors.lead_days",
+            "pass": true
+          },
+          {
+            "field": "amount_to_unblock_supplier",
+            "expected_from_db": 840.0,
+            "tool_reported": 840.0,
+            "source": "SUM(invoices.amount) open for that vendor",
+            "pass": true
+          },
+          {
+            "field": "cash.balance",
+            "expected_from_db": 3400.0,
+            "tool_reported": 3400.0,
+            "source": "cash_accounts.balance (checking)",
+            "pass": true
+          },
+          {
+            "field": "cash_after_unblocking",
+            "expected_from_db": 2560.0,
+            "tool_reported": 2560.0,
+            "source": "cash_accounts.balance - open invoices of vendor",
+            "pass": true
+          },
+          {
+            "field": "earliest_arrival_if_unblocked_today",
+            "expected_from_db": "2026-09-05",
+            "tool_reported": "2026-09-05",
+            "source": "desk.date_today + vendors.lead_days",
+            "pass": true
+          },
+          {
+            "field": "outcome",
+            "expected_from_db": "blocked_by_unpaid_invoice",
+            "tool_reported": "blocked_by_unpaid_invoice",
+            "source": "derived",
+            "pass": true
+          },
+          {
+            "field": "payments_to_approve[0].ref_id",
+            "expected_from_db": 501,
+            "tool_reported": 501,
+            "source": "invoices.id",
+            "pass": true
+          },
+          {
+            "field": "payments_to_approve[0].approved",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "proposal only",
+            "pass": true
+          },
+          {
+            "field": "other_sizes_in_stock",
+            "expected_from_db": [
+              "M",
+              "L",
+              "XL"
+            ],
+            "tool_reported": [
+              "M",
+              "L",
+              "XL"
+            ],
+            "source": "inventory.qty > 0",
+            "pass": true
+          },
+          {
+            "field": "identical responses across calls",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "database checksum unchanged",
+            "expected": "23686a90d698f7fa6f901a3f0a9774db9cbb31e13151c9e5717275f3321f360a",
+            "actual": "23686a90d698f7fa6f901a3f0a9774db9cbb31e13151c9e5717275f3321f360a",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "ticket": {
+            "id": 101,
+            "type": "customer_order",
+            "requester": "Tauhid Zaman",
+            "subject": "Bulldog tee",
+            "sku": "CC-TEE-WHITE",
+            "size": "S",
+            "qty": 1,
+            "lease_id": null,
+            "invoice_id": 501,
+            "status": "open",
+            "notes": "Needs a tee in size S.",
+            "created_at": "2026-08-31T09:15:00-04:00"
+          },
+          "today": "2026-08-31",
+          "outcome": "blocked_by_unpaid_invoice",
+          "summary": "Classic Bulldog Tee (S) is short by 1. The restock comes from Bulldog Print Co, who will not ship while invoice(s) 501 totalling $840.00 are unpaid. If paid today, it can arrive by 2026-09-05.",
+          "sku": "CC-TEE-WHITE",
+          "product_name": "Classic Bulldog Tee",
+          "size": "S",
+          "location": "Aisle B",
+          "qty_requested": 1,
+          "qty_on_hand": 0,
+          "qty_shortfall": 1,
+          "can_ship_now": false,
+          "unit_price": 28.0,
+          "order_total": 28.0,
+          "other_sizes_in_stock": [
+            {
+              "size": "M",
+              "qty": 5,
+              "location": "Aisle B"
+            },
+            {
+              "size": "L",
+              "qty": 3,
+              "location": "Aisle B"
+            },
+            {
+              "size": "XL",
+              "qty": 2,
+              "location": "Aisle B"
+            }
+          ],
+          "linked_invoice": {
+            "id": 501,
+            "vendor_id": 1,
+            "vendor_name": "Bulldog Print Co",
+            "amount": 840.0,
+            "due_date": "2026-08-28",
+            "status": "open",
+            "description": "Rush reprint CC-TEE-WHITE S",
+            "is_overdue": true,
+            "days_overdue": 3
+          },
+          "supplier": {
+            "id": 1,
+            "name": "Bulldog Print Co",
+            "specialty": "apparel reprint",
+            "lead_days": 5
+          },
+          "supplier_open_invoices": [
+            {
+              "id": 501,
+              "vendor_id": 1,
+              "vendor_name": "Bulldog Print Co",
+              "amount": 840.0,
+              "due_date": "2026-08-28",
+              "status": "open",
+              "description": "Rush reprint CC-TEE-WHITE S",
+              "is_overdue": true,
+              "days_overdue": 3
+            }
+          ],
+          "supplier_blocked": true,
+          "amount_to_unblock_supplier": 840.0,
+          "cash": {
+            "account": "checking",
+            "balance": 3400.0,
+            "as_of": "2026-08-31"
+          },
+          "cash_after_unblocking": 2560.0,
+          "can_afford_to_unblock": true,
+          "earliest_arrival_if_unblocked_today": "2026-09-05",
+          "payments_to_approve": [
+            {
+              "kind": "invoice",
+              "ref_id": 501,
+              "payee": "Bulldog Print Co",
+              "amount": 840.0,
+              "account": "checking",
+              "pay_on": "2026-08-31",
+              "requires_human_approval": true,
+              "approved": false
+            }
+          ],
+          "next_steps": [
+            "Request human approval to pay $840.00 to Bulldog Print Co (invoice 501); cash would go from $3,400.00 to $2,560.00.",
+            "After payment, mark invoice 501 as paid so Bulldog Print Co ships again.",
+            "Draft (do not send) a reply to Tauhid Zaman: size S is out of stock and can arrive by 2026-09-05.",
+            "Optionally offer sizes in stock now: M (5), L (3), XL (2)."
+          ]
+        }
+      }
+    ],
+    "review_rent_payment": [
+      {
+        "id": "EDGE-RRP-1",
+        "category": "edge_case",
+        "title": "Wrong ticket type is rejected and routed to the correct tool",
+        "tool": "review_rent_payment",
+        "prompt": "Negative test for review_rent_payment. Call it with ticket 103, a price_override request from a student club. A payment-preparation tool must never build a payment proposal from a ticket that is not a rent notice. Confirm it refuses with an error that names the real ticket type and the correct tool, evaluate_bulk_discount_request.",
+        "arguments": {
+          "ticket_id": 103
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 3,
+        "checks_total": 3,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "price_override",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "evaluate_bulk_discount_request",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "Ticket 103 is a 'price_override' ticket, but this tool handles 'rent_notice' tickets. Use evaluate_bulk_discount_request instead."
+        }
+      },
+      {
+        "id": "EDGE-RRP-2",
+        "category": "edge_case",
+        "title": "Unknown ticket id fails clearly",
+        "tool": "review_rent_payment",
+        "prompt": "Negative test on the next id after the last real ticket. Call review_rent_payment with ticket 104, which is not in the database. An off-by-one id must never produce a payment proposal. Confirm the tool returns an error saying ticket 104 does not exist and lists the valid ids.",
+        "arguments": {
+          "ticket_id": 104
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 3,
+        "checks_total": 3,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "104",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "does not exist",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "Ticket 104 does not exist. Known ticket ids: [101, 102, 103]."
+        }
+      }
+    ],
+    "evaluate_bulk_discount_request": [
+      {
+        "id": "EDGE-EBD-1",
+        "category": "edge_case",
+        "title": "Cost-floor boundary with unsorted, duplicated and extreme discounts",
+        "tool": "evaluate_bulk_discount_request",
+        "prompt": "Boundary test for the pricing math. Call evaluate_bulk_discount_request for ticket 103 with discount_percents [100, 62.1, 0, 62.0, 62.0]: unsorted, with a duplicate and both extremes. The tool must return each discount once, in ascending order. Exactly at the cost floor, 62.0% must still be above cost (58.00 x 0.38 = 22.04) and 62.1% must be flagged below cost (21.98), which proves max_discount_pct_above_cost is rounded down and never names a loss-making price. 100% must give a unit price of 0.00 with above_cost=false, and 0% must equal the list price.",
+        "arguments": {
+          "ticket_id": 103,
+          "discount_percents": [
+            100,
+            62.1,
+            0,
+            62.0,
+            62.0
+          ]
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 33,
+        "checks_total": 33,
+        "checks": [
+          {
+            "field": "today",
+            "expected_from_db": "2026-08-31",
+            "tool_reported": "2026-08-31",
+            "source": "desk.date_today",
+            "pass": true
+          },
+          {
+            "field": "qty_requested",
+            "expected_from_db": 20,
+            "tool_reported": 20,
+            "source": "tickets.qty (id=103)",
+            "pass": true
+          },
+          {
+            "field": "qty_on_hand",
+            "expected_from_db": 8,
+            "tool_reported": 8,
+            "source": "inventory.qty (sku, size of ticket 103)",
+            "pass": true
+          },
+          {
+            "field": "qty_fillable_now",
+            "expected_from_db": 8,
+            "tool_reported": 8,
+            "source": "MIN(tickets.qty, inventory.qty)",
+            "pass": true
+          },
+          {
+            "field": "qty_shortfall",
+            "expected_from_db": 12,
+            "tool_reported": 12,
+            "source": "tickets.qty - inventory.qty",
+            "pass": true
+          },
+          {
+            "field": "list_price",
+            "expected_from_db": 58.0,
+            "tool_reported": 58.0,
+            "source": "pricing.list_price",
+            "pass": true
+          },
+          {
+            "field": "unit_cost",
+            "expected_from_db": 22.0,
+            "tool_reported": 22.0,
+            "source": "pricing.unit_cost",
+            "pass": true
+          },
+          {
+            "field": "margin_per_unit",
+            "expected_from_db": 36.0,
+            "tool_reported": 36.0,
+            "source": "list_price - unit_cost",
+            "pass": true
+          },
+          {
+            "field": "list_total",
+            "expected_from_db": 1160.0,
+            "tool_reported": 1160.0,
+            "source": "tickets.qty x list_price",
+            "pass": true
+          },
+          {
+            "field": "cost_total",
+            "expected_from_db": 440.0,
+            "tool_reported": 440.0,
+            "source": "tickets.qty x unit_cost",
+            "pass": true
+          },
+          {
+            "field": "max_discount_pct_above_cost",
+            "expected_from_db": 62.0,
+            "tool_reported": 62.0,
+            "source": "floor to 0.1 of (1 - unit_cost/list_price) x 100",
+            "pass": true
+          },
+          {
+            "field": "restock_cost_for_shortfall",
+            "expected_from_db": 264.0,
+            "tool_reported": 264.0,
+            "source": "shortfall x unit_cost",
+            "pass": true
+          },
+          {
+            "field": "known_obligations_total",
+            "expected_from_db": 3240.0,
+            "tool_reported": 3240.0,
+            "source": "open invoices + rent due within 30 days of desk.date_today",
+            "pass": true
+          },
+          {
+            "field": "cash.balance",
+            "expected_from_db": 3400.0,
+            "tool_reported": 3400.0,
+            "source": "cash_accounts.balance (checking)",
+            "pass": true
+          },
+          {
+            "field": "cash_after_known_obligations",
+            "expected_from_db": 160.0,
+            "tool_reported": 160.0,
+            "source": "balance - known obligations",
+            "pass": true
+          },
+          {
+            "field": "can_afford_restock_after_obligations",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "cash after obligations >= restock cost",
+            "pass": true
+          },
+          {
+            "field": "outcome",
+            "expected_from_db": "partial_stock",
+            "tool_reported": "partial_stock",
+            "source": "derived",
+            "pass": true
+          },
+          {
+            "field": "discount_policy_on_record",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "no discount policy in database",
+            "pass": true
+          },
+          {
+            "field": "boss_discount_authority_pct",
+            "expected_from_db": 15.0,
+            "tool_reported": 15.0,
+            "source": "shop policy constant (Problem 5)",
+            "pass": true
+          },
+          {
+            "field": "blocked_vendors",
+            "expected_from_db": [
+              "Bulldog Print Co"
+            ],
+            "tool_reported": [
+              "Bulldog Print Co"
+            ],
+            "source": "vendors with open invoices",
+            "pass": true
+          },
+          {
+            "field": "scenario order (deduped, ascending)",
+            "expected_from_db": [
+              0.0,
+              62.0,
+              62.1,
+              100.0
+            ],
+            "tool_reported": [
+              0.0,
+              62.0,
+              62.1,
+              100.0
+            ],
+            "source": "input",
+            "pass": true
+          },
+          {
+            "field": "scenario 0.0% unit_price",
+            "expected_from_db": 58.0,
+            "tool_reported": 58.0,
+            "source": "pricing.list_price x (1 - discount)",
+            "pass": true
+          },
+          {
+            "field": "scenario 0.0% above_cost",
+            "expected_from_db": true,
+            "tool_reported": true,
+            "source": "unit_price >= pricing.unit_cost",
+            "pass": true
+          },
+          {
+            "field": "scenario 62.0% unit_price",
+            "expected_from_db": 22.04,
+            "tool_reported": 22.04,
+            "source": "pricing.list_price x (1 - discount)",
+            "pass": true
+          },
+          {
+            "field": "scenario 62.0% above_cost",
+            "expected_from_db": true,
+            "tool_reported": true,
+            "source": "unit_price >= pricing.unit_cost",
+            "pass": true
+          },
+          {
+            "field": "scenario 62.1% unit_price",
+            "expected_from_db": 21.98,
+            "tool_reported": 21.98,
+            "source": "pricing.list_price x (1 - discount)",
+            "pass": true
+          },
+          {
+            "field": "scenario 62.1% above_cost",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "unit_price >= pricing.unit_cost",
+            "pass": true
+          },
+          {
+            "field": "scenario 100.0% unit_price",
+            "expected_from_db": 0.0,
+            "tool_reported": 0.0,
+            "source": "pricing.list_price x (1 - discount)",
+            "pass": true
+          },
+          {
+            "field": "scenario 100.0% above_cost",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "unit_price >= pricing.unit_cost",
+            "pass": true
+          },
+          {
+            "field": "boundary 0.0% above_cost",
+            "expected_from_db": true,
+            "tool_reported": true,
+            "source": "cost floor",
+            "pass": true
+          },
+          {
+            "field": "boundary 62.0% above_cost",
+            "expected_from_db": true,
+            "tool_reported": true,
+            "source": "cost floor",
+            "pass": true
+          },
+          {
+            "field": "boundary 62.1% above_cost",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "cost floor",
+            "pass": true
+          },
+          {
+            "field": "boundary 100.0% above_cost",
+            "expected_from_db": false,
+            "tool_reported": false,
+            "source": "cost floor",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "ticket": {
+            "id": 103,
+            "type": "price_override",
+            "requester": "Yale AI Club",
+            "subject": "Bulk hoodie discount",
+            "sku": "CC-HOOD-NAVY",
+            "size": "M",
+            "qty": 20,
+            "lease_id": null,
+            "invoice_id": null,
+            "status": "open",
+            "notes": "Student org wants 20 hoodies, size M, asking for a bulk discount.",
+            "created_at": "2026-08-31T16:55:00-04:00"
+          },
+          "today": "2026-08-31",
+          "outcome": "partial_stock",
+          "summary": "Yale AI Club asks for 20 x Basic Hoodie Big Yale (M) at a discount. 8 in stock, 12 short. List total $1,160.00; cost floor $22.00/unit (break-even at 62.0% off). Business rules: margin must stay at or above 20% (max 52.5% off); the Boss may grant up to 15%, anything above needs a named human approver.",
+          "sku": "CC-HOOD-NAVY",
+          "product_name": "Basic Hoodie Big Yale",
+          "size": "M",
+          "location": "Aisle A",
+          "qty_requested": 20,
+          "qty_on_hand": 8,
+          "qty_fillable_now": 8,
+          "qty_shortfall": 12,
+          "other_sizes_in_stock": [
+            {
+              "size": "S",
+              "qty": 4,
+              "location": "Aisle A"
+            },
+            {
+              "size": "L",
+              "qty": 14,
+              "location": "Aisle A"
+            },
+            {
+              "size": "XL",
+              "qty": 6,
+              "location": "Aisle A"
+            }
+          ],
+          "list_price": 58.0,
+          "unit_cost": 22.0,
+          "margin_per_unit": 36.0,
+          "margin_pct": 62.1,
+          "list_total": 1160.0,
+          "cost_total": 440.0,
+          "max_discount_pct_above_cost": 62.0,
+          "discount_scenarios": [
+            {
+              "discount_pct": 0.0,
+              "unit_price": 58.0,
+              "order_total": 1160.0,
+              "total_margin": 720.0,
+              "margin_pct": 62.1,
+              "above_cost": true,
+              "allowed": true,
+              "within_boss_authority": true
+            },
+            {
+              "discount_pct": 62.0,
+              "unit_price": 22.04,
+              "order_total": 440.8,
+              "total_margin": 0.8,
+              "margin_pct": 0.2,
+              "above_cost": true,
+              "allowed": false,
+              "within_boss_authority": false
+            },
+            {
+              "discount_pct": 62.1,
+              "unit_price": 21.98,
+              "order_total": 439.6,
+              "total_margin": -0.4,
+              "margin_pct": -0.1,
+              "above_cost": false,
+              "allowed": false,
+              "within_boss_authority": false
+            },
+            {
+              "discount_pct": 100.0,
+              "unit_price": 0.0,
+              "order_total": 0.0,
+              "total_margin": -440.0,
+              "margin_pct": 0.0,
+              "above_cost": false,
+              "allowed": false,
+              "within_boss_authority": false
+            }
+          ],
+          "discount_policy_on_record": false,
+          "boss_discount_authority_pct": 15.0,
+          "min_margin_pct_after_discount": 20.0,
+          "restock_cost_for_shortfall": 264.0,
+          "restock_options": [
+            {
+              "vendor": {
+                "id": 1,
+                "name": "Bulldog Print Co",
+                "specialty": "apparel reprint",
+                "lead_days": 5
+              },
+              "open_invoices": [
+                {
+                  "id": 501,
+                  "vendor_id": 1,
+                  "vendor_name": "Bulldog Print Co",
+                  "amount": 840.0,
+                  "due_date": "2026-08-28",
+                  "status": "open",
+                  "description": "Rush reprint CC-TEE-WHITE S",
+                  "is_overdue": true,
+                  "days_overdue": 3
+                }
+              ],
+              "open_invoice_total": 840.0,
+              "blocked": true,
+              "earliest_arrival_if_ordered_today": "2026-09-05"
+            },
+            {
+              "vendor": {
+                "id": 2,
+                "name": "Elm City Gifts",
+                "specialty": "mugs and small goods",
+                "lead_days": 3
+              },
+              "open_invoices": [],
+              "open_invoice_total": 0.0,
+              "blocked": false,
+              "earliest_arrival_if_ordered_today": "2026-09-03"
+            },
+            {
+              "vendor": {
+                "id": 3,
+                "name": "QuickShip CT",
+                "specialty": "local courier",
+                "lead_days": 1
+              },
+              "open_invoices": [],
+              "open_invoice_total": 0.0,
+              "blocked": false,
+              "earliest_arrival_if_ordered_today": "2026-09-01"
+            }
+          ],
+          "cash": {
+            "account": "checking",
+            "balance": 3400.0,
+            "as_of": "2026-08-31"
+          },
+          "known_obligations_total": 3240.0,
+          "cash_after_known_obligations": 160.0,
+          "can_afford_restock_after_obligations": false,
+          "next_steps": [
+            "Boss decides the discount: up to 15% alone, up to 52.5% with human approval, never more; the scenarios show margin and authority for each option.",
+            "Reserve the 8 in stock at Aisle A and offer them now.",
+            "The remaining 12 need a restock ($264.00 at cost). Blocked vendors until paid: Bulldog Print Co ($840.00 open). Pick the vendor whose specialty fits the product.",
+            "Cash after known obligations is $160.00, below the $264.00 restock cost: flag this to a human before committing to the full quantity.",
+            "Sizes in stock now: S (4), L (14), XL (6).",
+            "Draft (do not send) a reply to Yale AI Club with the approved price and delivery plan."
+          ]
+        }
+      },
+      {
+        "id": "EDGE-EBD-2",
+        "category": "edge_case",
+        "title": "Out-of-range discount is rejected by the input schema",
+        "tool": "evaluate_bulk_discount_request",
+        "prompt": "Input-validation test. The published schema limits each discount to between 0 and 100. Call evaluate_bulk_discount_request for ticket 103 with discount_percents [10, 150] and confirm the whole call is rejected at the input boundary, rather than computing a negative price for 150% or silently dropping the invalid value.",
+        "arguments": {
+          "ticket_id": 103,
+          "discount_percents": [
+            10,
+            150
+          ]
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 2,
+        "checks_total": 2,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "discount_percents",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "1 validation error for call[evaluate_bulk_discount_request]\ndiscount_percents.1\n  Input should be less than or equal to 100 [type=less_than_equal, input_value=150, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/less_than_equal"
+        }
+      },
+      {
+        "id": "EDGE-EBD-3",
+        "category": "edge_case",
+        "title": "Wrong ticket type is rejected and routed to the correct tool",
+        "tool": "evaluate_bulk_discount_request",
+        "prompt": "Negative test for evaluate_bulk_discount_request. Call it with ticket 101, a single-unit customer order, not a price override. A discount tool must never produce discount scenarios for an ordinary order. Confirm it refuses with an error that names the real type (customer_order) and points to check_order_fulfillment.",
+        "arguments": {
+          "ticket_id": 101
+        },
+        "calls": 1,
+        "result": "PASS",
+        "checks_passed": 3,
+        "checks_total": 3,
+        "checks": [
+          {
+            "field": "is_error",
+            "expected": true,
+            "actual": true,
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "customer_order",
+            "pass": true
+          },
+          {
+            "field": "error message contains",
+            "expected": "check_order_fulfillment",
+            "pass": true
+          }
+        ],
+        "tool_output": {
+          "error": "Ticket 101 is a 'customer_order' ticket, but this tool handles 'price_override' tickets. Use check_order_fulfillment instead."
+        }
+      }
+    ]
+  }
+}
